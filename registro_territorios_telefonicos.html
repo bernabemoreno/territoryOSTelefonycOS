@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Predicación telefónica - Territorios</title>
+  <style>
+    :root{
+      --bg:#f4f7fb; --card:#ffffff; --text:#18202a; --muted:#64748b; --primary:#2563eb; --primary2:#1d4ed8; --ok:#16a34a; --warn:#f59e0b; --danger:#dc2626; --border:#dbe3ef;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; background:var(--bg); color:var(--text)}
+    header{background:linear-gradient(135deg,#1d4ed8,#2563eb,#38bdf8); color:white; padding:28px 16px; text-align:center; box-shadow:0 6px 20px rgba(37,99,235,.25)}
+    header h1{margin:0; font-size:clamp(24px,4vw,38px)}
+    header p{margin:8px 0 0; opacity:.95}
+    main{max-width:1100px; margin:0 auto; padding:18px}
+    .card{background:var(--card); border:1px solid var(--border); border-radius:18px; box-shadow:0 8px 26px rgba(15,23,42,.08); padding:18px; margin:16px 0}
+    .row{display:flex; gap:12px; flex-wrap:wrap; align-items:flex-end}
+    label{display:block; font-weight:700; margin-bottom:6px}
+    input,select,textarea{width:100%; padding:12px 13px; border:1px solid var(--border); border-radius:12px; font-size:16px; background:white; color:var(--text)}
+    textarea{min-height:44px; resize:vertical}
+    .field{flex:1 1 220px}
+    button{border:0; border-radius:13px; padding:12px 16px; font-size:16px; font-weight:800; cursor:pointer; background:var(--primary); color:white; transition:.15s transform,.15s opacity,.15s background}
+    button:hover{background:var(--primary2); transform:translateY(-1px)}
+    button:disabled{opacity:.45; cursor:not-allowed; transform:none}
+    .btn-secondary{background:#e2e8f0; color:#0f172a}.btn-secondary:hover{background:#cbd5e1}
+    .btn-danger{background:var(--danger)}.btn-danger:hover{background:#b91c1c}
+    .btn-whatsapp{background:#16a34a}.btn-whatsapp:hover{background:#15803d}
+    .territory-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:12px; margin-top:14px}
+    .territory-btn{padding:18px 10px; font-size:20px; background:#eff6ff; color:#1d4ed8; border:2px solid #bfdbfe; box-shadow:none}
+    .territory-btn:hover{background:#dbeafe}
+    .territory-btn small{display:block; color:#475569; font-size:13px; margin-top:4px}
+    .muted{color:var(--muted)}
+    .hidden{display:none!important}
+    .statusbar{display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; align-items:center; margin:10px 0 0}
+    .progress-wrap{height:14px; background:#e2e8f0; border-radius:999px; overflow:hidden; flex:1 1 250px}
+    .progress{height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); width:0%}
+    .phone-card{border:1px solid var(--border); border-radius:16px; padding:14px; margin:12px 0; background:#fbfdff}
+    .phone-head{display:flex; justify-content:space-between; gap:10px; align-items:center; margin-bottom:10px}
+    .phone-number{font-size:22px; font-weight:900; letter-spacing:.3px}
+    .badge{font-size:13px; border-radius:999px; padding:5px 10px; background:#e2e8f0; color:#334155; font-weight:800}
+    .original-note{font-size:14px; margin-top:5px; color:#475569; background:#f1f5f9; border-radius:10px; padding:8px}
+    .mini{font-size:14px}.error{color:var(--danger); font-weight:800}.ok{color:var(--ok); font-weight:800}
+    .modal-back{position:fixed; inset:0; background:rgba(15,23,42,.58); display:flex; align-items:center; justify-content:center; padding:18px; z-index:99}
+    .modal{background:white; border-radius:20px; max-width:760px; width:100%; max-height:90vh; overflow:auto; padding:18px; box-shadow:0 20px 60px rgba(0,0,0,.35)}
+    pre{white-space:pre-wrap; word-break:break-word; background:#0f172a; color:#e2e8f0; padding:14px; border-radius:14px; font-size:14px; line-height:1.45}
+    .top-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px}
+    @media(max-width:680px){main{padding:12px}.phone-number{font-size:20px}button{width:100%}.top-actions button{width:100%}}
+    @media print{header,.search-card,.top-actions,.modal-back{display:none!important}.card{box-shadow:none;border:0}.phone-card{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Predicación telefónica</h1>
+  <p>Buscar territorio, registrar resultados y enviar informe por WhatsApp</p>
+</header>
+<main>
+  <section id="searchView" class="card search-card">
+    <h2>1. Buscar territorio</h2>
+    <p class="muted">Escribí el número del territorio. Si ponés <b>12</b>, puede mostrar 12, 112, 120, etc.</p>
+    <div class="row">
+      <div class="field">
+        <label for="territorySearch">Número de territorio</label>
+        <input id="territorySearch" inputmode="numeric" placeholder="Ejemplo: 12" autocomplete="off" />
+      </div>
+      <div class="field">
+        <label for="coordinator">Quien coordina / envía el informe</label>
+        <input id="coordinator" placeholder="Opcional" autocomplete="name" />
+      </div>
+    </div>
+    <div id="loadStatus" class="muted mini" style="margin-top:10px">Cargando CSV...</div>
+    <div id="territoryResults" class="territory-grid"></div>
+  </section>
+
+  <section id="workView" class="card hidden">
+    <div class="row" style="align-items:center; justify-content:space-between">
+      <div>
+        <h2 id="territoryTitle" style="margin-bottom:4px">Territorio</h2>
+        <div id="territorySubtitle" class="muted"></div>
+      </div>
+      <button id="backBtn" class="btn-secondary">Volver / salir</button>
+    </div>
+    <div class="statusbar">
+      <span id="progressText" class="mini"><b>Completado:</b> 0 / 0</span>
+      <div class="progress-wrap"><div id="progressBar" class="progress"></div></div>
+    </div>
+    <div id="missingBox" class="mini error" style="margin-top:10px"></div>
+    <div id="phonesList"></div>
+    <div class="top-actions">
+      <button id="finishBtn" class="btn-whatsapp" disabled>Generar informe para WhatsApp</button>
+      <button onclick="window.print()" class="btn-secondary">Imprimir vista</button>
+    </div>
+  </section>
+</main>
+
+<div id="reportModal" class="modal-back hidden">
+  <div class="modal">
+    <h2>Informe listo para enviar</h2>
+    <p class="muted">Revisá el texto. Podés copiarlo o abrir WhatsApp con el informe preparado.</p>
+    <pre id="reportText"></pre>
+    <div class="top-actions">
+      <button id="copyBtn" class="btn-secondary">Copiar texto</button>
+      <button id="waBtn" class="btn-whatsapp">Abrir WhatsApp</button>
+      <button id="closeModalBtn" class="btn-secondary">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CSV_FILE = 'territorios_telefonicos_base.csv';
+const RESULTS = [
+  '',
+  'No en casa',
+  'Fuera de servicio',
+  'Atendió y no está interesado',
+  'Atendió y SÍ está interesado',
+  'Revisita / volver a llamar',
+  'Número incorrecto',
+  'No llamar nuevamente'
+];
+let allRows = [];
+let territories = new Map();
+let currentTerritory = null;
+let currentRows = [];
+let dirty = false;
+let completed = false;
+let lastReport = '';
+
+const $ = id => document.getElementById(id);
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i], n = text[i+1];
+    if(inQuotes){
+      if(c === '"' && n === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else field += c;
+    }else{
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\n'){
+        row.push(field); rows.push(row); row=[]; field='';
+      } else if(c !== '\r') field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  const headers = rows.shift().map(h => h.trim());
+  return rows.filter(r => r.some(v => String(v).trim() !== '')).map(r => Object.fromEntries(headers.map((h,i)=>[h,(r[i]||'').trim()])));
+}
+
+async function loadCSV(){
+  try{
+    const res = await fetch(CSV_FILE + '?v=' + Date.now());
+    if(!res.ok) throw new Error('No se pudo leer el CSV');
+    const text = await res.text();
+    allRows = parseCSV(text);
+    territories.clear();
+    allRows.forEach(r => {
+      if(!territories.has(r.territorio)) territories.set(r.territorio, []);
+      territories.get(r.territorio).push(r);
+    });
+    for(const rows of territories.values()) rows.sort((a,b)=>Number(a.orden)-Number(b.orden));
+    $('loadStatus').innerHTML = `CSV cargado: <b>${territories.size}</b> territorios y <b>${allRows.length}</b> teléfonos.`;
+    renderSearch();
+  }catch(e){
+    $('loadStatus').innerHTML = '<span class="error">No se pudo cargar el CSV. Asegurate de subir este HTML junto con territorios_telefonicos_base.csv en la misma carpeta.</span>';
+  }
+}
+
+function renderSearch(){
+  const q = $('territorySearch').value.trim();
+  const box = $('territoryResults');
+  box.innerHTML = '';
+  if(!q){
+    box.innerHTML = '<p class="muted">Ingresá un número para buscar.</p>';
+    return;
+  }
+  const found = [...territories.keys()].filter(t => t.includes(q)).sort((a,b)=>Number(a)-Number(b));
+  if(!found.length){
+    box.innerHTML = '<p class="error">No se encontraron territorios con ese número.</p>';
+    return;
+  }
+  found.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'territory-btn';
+    btn.innerHTML = `Territorio ${t}<small>${territories.get(t).length} teléfonos</small>`;
+    btn.onclick = () => openTerritory(t);
+    box.appendChild(btn);
+  });
+}
+
+function openTerritory(t){
+  currentTerritory = t;
+  currentRows = territories.get(t).map(r => ({...r, hermano:'', resultado:'', obs:''}));
+  dirty = false;
+  completed = false;
+  $('searchView').classList.add('hidden');
+  $('workView').classList.remove('hidden');
+  $('territoryTitle').textContent = `Territorio ${t}`;
+  $('territorySubtitle').textContent = `${currentRows.length} teléfonos para registrar`;
+  renderPhones();
+  updateProgress();
+  window.scrollTo(0,0);
+}
+
+function renderPhones(){
+  const list = $('phonesList');
+  list.innerHTML = '';
+  currentRows.forEach((r, i) => {
+    const card = document.createElement('div');
+    card.className = 'phone-card';
+    const options = RESULTS.map(v => `<option value="${escapeHtml(v)}">${v || 'Seleccionar resultado'}</option>`).join('');
+    card.innerHTML = `
+      <div class="phone-head">
+        <div>
+          <div class="phone-number">☎ ${escapeHtml(r.telefono)}</div>
+          ${r.observacion_original ? `<div class="original-note"><b>Obs. original:</b> ${escapeHtml(r.observacion_original)}</div>` : ''}
+        </div>
+        <span class="badge">${i+1} / ${currentRows.length}</span>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Hermano/a que predicó</label>
+          <input data-i="${i}" data-f="hermano" placeholder="Nombre del hermano/a" autocomplete="name" />
+        </div>
+        <div class="field">
+          <label>Resultado</label>
+          <select data-i="${i}" data-f="resultado">${options}</select>
+        </div>
+      </div>
+      <div style="margin-top:10px">
+        <label>Observación</label>
+        <textarea data-i="${i}" data-f="obs" placeholder="Opcional. Ejemplo: volver sábado, pidió más información, etc."></textarea>
+      </div>`;
+    list.appendChild(card);
+  });
+  list.querySelectorAll('input,select,textarea').forEach(el => {
+    el.addEventListener('input', e => {
+      const i = Number(e.target.dataset.i), f = e.target.dataset.f;
+      currentRows[i][f] = e.target.value.trim();
+      dirty = true;
+      updateProgress();
+    });
+  });
+}
+
+function updateProgress(){
+  const total = currentRows.length;
+  const done = currentRows.filter(r => r.hermano && r.resultado).length;
+  const pct = total ? Math.round(done*100/total) : 0;
+  $('progressText').innerHTML = `<b>Completado:</b> ${done} / ${total} (${pct}%)`;
+  $('progressBar').style.width = pct + '%';
+  const faltan = total - done;
+  $('missingBox').textContent = faltan ? `Faltan ${faltan} números por completar. Para generar el informe cada número necesita hermano/a y resultado.` : 'Todos los números están completos.';
+  $('missingBox').className = faltan ? 'mini error' : 'mini ok';
+  $('finishBtn').disabled = faltan !== 0;
+}
+
+function buildReport(){
+  const now = new Date();
+  const fecha = now.toLocaleDateString('es-AR');
+  const hora = now.toLocaleTimeString('es-AR', {hour:'2-digit', minute:'2-digit'});
+  const coord = $('coordinator').value.trim();
+  const counts = {};
+  currentRows.forEach(r => counts[r.resultado] = (counts[r.resultado] || 0) + 1);
+  let text = '📞 Predicación telefónica\n\n';
+  text += `Fecha: ${fecha}\n`;
+  text += `Hora de envío: ${hora}\n`;
+  text += `Territorio: ${currentTerritory}\n`;
+  if(coord) text += `Coordina / envía: ${coord}\n`;
+  text += `\nTotal de números: ${currentRows.length}\n\n`;
+  text += 'Resumen:\n';
+  RESULTS.filter(Boolean).forEach(r => { if(counts[r]) text += `- ${r}: ${counts[r]}\n`; });
+  text += '\nDetalle por número:\n';
+  currentRows.forEach((r, idx) => {
+    text += `\n${idx+1}) ${r.telefono}\n`;
+    text += `Hermano/a: ${r.hermano}\n`;
+    text += `Resultado: ${r.resultado}\n`;
+    if(r.obs) text += `Obs.: ${r.obs}\n`;
+    if(r.observacion_original) text += `Obs. original: ${r.observacion_original}\n`;
+  });
+  text += '\nInforme generado automáticamente.';
+  return text;
+}
+
+function showReport(){
+  const incomplete = currentRows.filter(r => !r.hermano || !r.resultado).length;
+  if(incomplete){ alert(`Faltan ${incomplete} números por completar.`); return; }
+  lastReport = buildReport();
+  $('reportText').textContent = lastReport;
+  $('reportModal').classList.remove('hidden');
+  completed = true;
+}
+
+function closeTerritory(){
+  if(dirty && !completed){
+    const ok = confirm('Este territorio tiene datos cargados pero todavía no se generó el informe. Si salís, se van a perder los datos de este territorio. ¿Querés salir igual?');
+    if(!ok) return;
+  }
+  currentTerritory = null; currentRows = []; dirty = false; completed = false;
+  $('workView').classList.add('hidden');
+  $('searchView').classList.remove('hidden');
+  renderSearch();
+  window.scrollTo(0,0);
+}
+
+function escapeHtml(s){
+  return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+}
+
+$('territorySearch').addEventListener('input', renderSearch);
+$('finishBtn').addEventListener('click', showReport);
+$('backBtn').addEventListener('click', closeTerritory);
+$('closeModalBtn').addEventListener('click', () => $('reportModal').classList.add('hidden'));
+$('copyBtn').addEventListener('click', async () => {
+  try{ await navigator.clipboard.writeText(lastReport); alert('Informe copiado.'); }
+  catch(e){ alert('No se pudo copiar automáticamente. Seleccioná el texto y copialo manualmente.'); }
+});
+$('waBtn').addEventListener('click', () => {
+  const url = 'https://wa.me/?text=' + encodeURIComponent(lastReport);
+  window.open(url, '_blank');
+});
+window.addEventListener('beforeunload', e => {
+  if(dirty && !completed){ e.preventDefault(); e.returnValue = ''; }
+});
+loadCSV();
+</script>
+</body>
+</html>
